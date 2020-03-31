@@ -23,21 +23,21 @@ class JudeEquals(val global: Global) extends Plugin {
     class JudeEqualsTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
       override def transform(tree: Tree) = tree match {
-        case Apply(Select(lhs, TermName("$eq$eq")), List(rhs)) =>
+        case Apply(Select(lhs, TermName("$eq$eq")), rhs) =>
           Apply(
             Select(transform(lhs), TermName("$eq$eq$")),
-            List(transform(rhs))
+            rhs.map(transform)
           )
-        case Apply(Select(lhs, TermName("$bang$eq")), List(rhs)) =>
+        case Apply(Select(lhs, TermName("$bang$eq")), rhs) =>
           Apply(
             Select(transform(lhs), TermName("$bang$eq$")),
-            List(transform(rhs))
+            rhs.map(transform)
           )
         case DefDef(
             modifiers,
             TermName("$eq$eq"),
             tparams,
-            List(List(param)),
+            params,
             retType,
             rhs
             ) =>
@@ -45,7 +45,7 @@ class JudeEquals(val global: Global) extends Plugin {
             modifiers,
             TermName("$eq$eq$"),
             tparams,
-            List(List(param)),
+            params,
             retType,
             transform(rhs)
           )
@@ -53,7 +53,7 @@ class JudeEquals(val global: Global) extends Plugin {
             modifiers,
             TermName("$bang$eq"),
             tparams,
-            List(List(param)),
+            params,
             retType,
             rhs
             ) =>
@@ -61,7 +61,7 @@ class JudeEquals(val global: Global) extends Plugin {
             modifiers,
             TermName("$bang$eq$"),
             tparams,
-            List(List(param)),
+            params,
             retType,
             transform(rhs)
           )
