@@ -1,4 +1,4 @@
-package jude.plugins.literals
+package jude.plugins.equals
 
 import scala.tools.nsc
 import nsc.Global
@@ -6,48 +6,65 @@ import nsc.Phase
 import nsc.plugins._
 import nsc.transform._
 
-class JudeLiterals(val global: Global) extends Plugin {
+class JudeEquals(val global: Global) extends Plugin {
   import global._
 
-  val name = "literals"
-  val description = "converts scala literal values into jude literal values"
+  val name = "equals"
+  val description =
+    "renames the == and != so that the default implementations can't be used"
   val components = List[PluginComponent](Component)
 
   private object Component extends PluginComponent with TypingTransformers {
-    val global: JudeLiterals.this.global.type = JudeLiterals.this.global
-    // val runsAfter = List("parser")
-    // Using the Scala Compiler 2.8.x the runsAfter should be written as below
+    val global: JudeEquals.this.global.type = JudeEquals.this.global
     val runsAfter = List[String]("parser")
-    val phaseName = JudeLiterals.this.name
-    def newPhase(_prev: Phase) = new JudeLiteralsPhase(_prev)
+    val phaseName = JudeEquals.this.name
+    def newPhase(_prev: Phase) = new JudeEqualsPhase(_prev)
 
-    class JudeLiteralsTransformer(unit: CompilationUnit)
+    class JudeEqualsTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
       override def transform(tree: Tree) = tree match {
-        case Literal(Constant(null)) =>
-          global.reporter.error(
-            tree.pos,
-            "literal 'null' values are not supported. Instead use 'unsafe.nullValue'"
+        case Apply(Select(lhs, TermName("$eq$eq")), List(rhs)) =>
+          Apply(
+            Select(transform(lhs), TermName("$eq$eq$")),
+            List(transform(rhs))
           )
-          tree
-        case Ident(TermName("_root_$u002Ejude$u002Eunsafe$u002EnullValue")) =>
-          Literal(Constant(null))
-        case Literal(Constant(_: Boolean)) =>
-          q"""_root_.jude.Boolean($tree)"""
-        case Literal(Constant(_: Float)) =>
-          q"""_root_.jude.f32($tree)"""
-        case Literal(Constant(_: Double)) =>
-          q"""_root_.jude.f64($tree)"""
-        case Literal(Constant(_: Long)) =>
-          q"""_root_.jude.i64($tree)"""
-        case Literal(Constant(_: Int)) =>
-          q"""_root_.jude.i32($tree)"""
-        case Literal(Constant(_: String)) =>
-          q"""_root_.jude.String($tree)"""
-
-        case If(condition, thenPart, elsePart) =>
-          val newCondition = q"""(${transform(condition)}).toScalaPrimitive"""
-          If(newCondition, transform(thenPart), transform(elsePart))
+        case Apply(Select(lhs, TermName("$bang$eq")), List(rhs)) =>
+          Apply(
+            Select(transform(lhs), TermName("$bang$eq$")),
+            List(transform(rhs))
+          )
+        case DefDef(
+            modifiers,
+            TermName("$eq$eq"),
+            tparams,
+            List(List(param)),
+            retType,
+            rhs
+            ) =>
+          DefDef(
+            modifiers,
+            TermName("$eq$eq$"),
+            tparams,
+            List(List(param)),
+            retType,
+            transform(rhs)
+          )
+        case DefDef(
+            modifiers,
+            TermName("$bang$eq"),
+            tparams,
+            List(List(param)),
+            retType,
+            rhs
+            ) =>
+          DefDef(
+            modifiers,
+            TermName("$bang$eq$"),
+            tparams,
+            List(List(param)),
+            retType,
+            transform(rhs)
+          )
         case _ =>
           // I'll keep this in here. It's good to run experiments
           // println(s"""|
@@ -62,15 +79,15 @@ class JudeLiterals(val global: Global) extends Plugin {
     }
 
     def newTransformer(unit: CompilationUnit) =
-      new JudeLiteralsTransformer(unit)
+      new JudeEqualsTransformer(unit)
 
-    class JudeLiteralsPhase(prev: Phase) extends StdPhase(prev) {
+    class JudeEqualsPhase(prev: Phase) extends StdPhase(prev) {
 
       type PublicCompilationUnit = CompilationUnit
-      override def name = JudeLiterals.this.name
+      override def name = JudeEquals.this.name
 
       override def apply(unit: CompilationUnit): Unit =
-        unit.body = new JudeLiteralsTransformer(unit).transform(unit.body)
+        unit.body = new JudeEqualsTransformer(unit).transform(unit.body)
 
     }
   }

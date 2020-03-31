@@ -1,5 +1,5 @@
 <plugin>
-	<name>literals</name>
-	<classname>jude.plugins.literals.JudeLiterals</classname>
+	<name>equals</name>
+	<classname>jude.plugins.equals.JudeEquals</classname>
 </plugin>
 
