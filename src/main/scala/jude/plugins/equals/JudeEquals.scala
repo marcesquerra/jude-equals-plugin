@@ -20,22 +20,31 @@ class JudeEquals(val global: Global) extends Plugin {
     val phaseName = JudeEquals.this.name
     def newPhase(_prev: Phase) = new JudeEqualsPhase(_prev)
 
+    val EQ = "$eq$eq"
+    val EQJ = "$eq$eq$"
+    val NEQ = "$bang$eq"
+    val NEQJ = "$bang$eq$"
+
     class JudeEqualsTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
       override def transform(tree: Tree) = tree match {
-        case Apply(Select(lhs, TermName("$eq$eq")), rhs) =>
+        case Apply(Select(lhs, TermName(EQ)), rhs) =>
           Apply(
-            Select(transform(lhs), TermName("$eq$eq$")),
+            Select(transform(lhs), TermName(EQJ)),
             rhs.map(transform)
           )
-        case Apply(Select(lhs, TermName("$bang$eq")), rhs) =>
+        case Apply(Select(lhs, TermName(NEQ)), rhs) =>
           Apply(
-            Select(transform(lhs), TermName("$bang$eq$")),
+            Select(transform(lhs), TermName(NEQJ)),
             rhs.map(transform)
           )
+        case Ident(TermName(EQ)) =>
+          Ident(TermName(EQJ))
+        case Ident(TermName(NEQ)) =>
+          Ident(TermName(NEQJ))
         case DefDef(
             modifiers,
-            TermName("$eq$eq"),
+            TermName(EQ),
             tparams,
             params,
             retType,
@@ -43,7 +52,7 @@ class JudeEquals(val global: Global) extends Plugin {
             ) =>
           DefDef(
             modifiers,
-            TermName("$eq$eq$"),
+            TermName(EQJ),
             tparams,
             params,
             retType,
@@ -51,7 +60,7 @@ class JudeEquals(val global: Global) extends Plugin {
           )
         case DefDef(
             modifiers,
-            TermName("$bang$eq"),
+            TermName(NEQ),
             tparams,
             params,
             retType,
@@ -59,7 +68,7 @@ class JudeEquals(val global: Global) extends Plugin {
             ) =>
           DefDef(
             modifiers,
-            TermName("$bang$eq$"),
+            TermName(NEQJ),
             tparams,
             params,
             retType,
