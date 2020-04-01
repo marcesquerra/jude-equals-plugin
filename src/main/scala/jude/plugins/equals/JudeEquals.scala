@@ -21,9 +21,9 @@ class JudeEquals(val global: Global) extends Plugin {
     def newPhase(_prev: Phase) = new JudeEqualsPhase(_prev)
 
     val EQ = "$eq$eq"
-    val EQJ = "$eq$eq$"
+    val EQJ = "'$eq$eq'"
     val NEQ = "$bang$eq"
-    val NEQJ = "$bang$eq$"
+    val NEQJ = "'$bang$eq'"
 
     class JudeEqualsTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
