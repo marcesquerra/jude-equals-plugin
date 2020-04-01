@@ -14,7 +14,7 @@ lazy val importer = (project in file("."))
     , bintrayRepository := "jude"
     , bintrayOrganization := Some("bryghts")
     , git.useGitDescribe := true
-    , git.formattedShaVersion := git.gitHeadCommit.value map { sha => s"v${sha.take(5)}" }
+    , git.formattedShaVersion := git.gitHeadCommit.value map { sha => s"v${sha.take(5).toUpperCase}" }
     , libraryDependencies += "org.scala-lang" % "scala-compiler" % scala211
  )
 
