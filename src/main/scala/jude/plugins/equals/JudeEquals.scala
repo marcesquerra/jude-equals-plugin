@@ -25,6 +25,10 @@ class JudeEquals(val global: Global) extends Plugin {
     val NEQ = "$bang$eq"
     val NEQJ = "'$bang$eq'"
 
+    val EQUALS = "equals"
+    val EQUALSJ = "'equals'"
+    val SCALA_EQUALS = "extern$u0020equals"
+
     class JudeEqualsTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
       override def transform(tree: Tree) = tree match {
@@ -38,10 +42,24 @@ class JudeEquals(val global: Global) extends Plugin {
             Select(transform(lhs), TermName(NEQJ)),
             rhs.map(transform)
           )
+        case Apply(Select(lhs, TermName(EQUALS)), rhs) =>
+          Apply(
+            Select(transform(lhs), TermName(EQUALSJ)),
+            rhs.map(transform)
+          )
+        case Apply(Select(lhs, TermName(SCALA_EQUALS)), rhs) =>
+          Apply(
+            Select(transform(lhs), TermName(EQUALS)),
+            rhs.map(transform)
+          )
         case Ident(TermName(EQ)) =>
           Ident(TermName(EQJ))
         case Ident(TermName(NEQ)) =>
           Ident(TermName(NEQJ))
+        case Ident(TermName(EQUALS)) =>
+          Ident(TermName(EQUALSJ))
+        case Ident(TermName(SCALA_EQUALS)) =>
+          Ident(TermName(EQUALS))
         case DefDef(
             modifiers,
             TermName(EQ),
@@ -69,6 +87,38 @@ class JudeEquals(val global: Global) extends Plugin {
           DefDef(
             modifiers,
             TermName(NEQJ),
+            tparams,
+            params,
+            retType,
+            transform(rhs)
+          )
+        case DefDef(
+            modifiers,
+            TermName(EQUALS),
+            tparams,
+            params,
+            retType,
+            rhs
+            ) =>
+          DefDef(
+            modifiers,
+            TermName(EQUALSJ),
+            tparams,
+            params,
+            retType,
+            transform(rhs)
+          )
+        case DefDef(
+            modifiers,
+            TermName(SCALA_EQUALS),
+            tparams,
+            params,
+            retType,
+            rhs
+            ) =>
+          DefDef(
+            modifiers,
+            TermName(EQUALS),
             tparams,
             params,
             retType,
