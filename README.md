@@ -1,1 +1,1 @@
-# jude-literals-plugin
+# jude-renamer-plugin
