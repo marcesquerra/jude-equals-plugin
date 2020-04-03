@@ -26,14 +26,15 @@ class JudeRenamer(val global: Global) extends Plugin {
     def extern(s: String): (String, String) =
       ("extern$u0020" + s) -> s
 
-    val mappings: Map[String, String] = Map(
-      quote("$eq$eq"),
-      quote("$bang$eq"),
-      quote("equals"),
-      quote("toString"),
-      extern("equals"),
-      extern("toString")
-    )
+    def method(s: String): List[(String, String)] =
+      List(quote(s), extern(s))
+
+    val mappings: Map[String, String] = List(
+      method("$eq$eq"),
+      method("$bang$eq"),
+      method("equals"),
+      method("toString")
+    ).flatten.toMap
 
     class JudeRenamerTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
