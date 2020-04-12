@@ -12,27 +12,25 @@ class JudeRenamer(val global: Global) extends Plugin {
   val name = "Renamer"
   val description =
     "renames the == and != so that the default implementations can't be used"
-  val components = List[PluginComponent](Component)
+  val components =
+    List[PluginComponent](AfterParserComponent, AfterPatmatComponent)
 
-  private object Component extends PluginComponent with TypingTransformers {
-    val global: JudeRenamer.this.global.type = JudeRenamer.this.global
+  def quote(s: String): (String, String) =
+    s -> s"'$s'"
+
+  def extern(s: String): (String, String) =
+    ("extern$u0020" + s) -> s
+
+  def method(s: String): List[(String, String)] =
+    List(quote(s), extern(s))
+
+  private object AfterParserComponent extends RanamingComponent {
     val runsAfter = List[String]("parser")
-    val phaseName = JudeRenamer.this.name
-    def newPhase(_prev: Phase) = new JudeRenamerPhase(_prev)
-
-    def quote(s: String): (String, String) =
-      s -> s"'$s'"
-
-    def extern(s: String): (String, String) =
-      ("extern$u0020" + s) -> s
-
-    def method(s: String): List[(String, String)] =
-      List(quote(s), extern(s))
+    val phaseName = "AftterParser" + JudeRenamer.this.name
 
     val mappings: Map[String, String] = List(
       method("$eq$eq"),
       method("$bang$eq"),
-      method("equals"),
       method("toString"),
       method("clone"),
       method("finalize"),
@@ -42,6 +40,24 @@ class JudeRenamer(val global: Global) extends Plugin {
       method("notifyAll"),
       method("wait")
     ).flatten.toMap
+  }
+
+  private object AfterPatmatComponent extends RanamingComponent {
+    val runsAfter = List[String]("patmat")
+    val phaseName = "AftterPatmat" + JudeRenamer.this.name
+
+    val mappings: Map[String, String] = List(
+      method("equals")
+    ).flatten.toMap
+  }
+
+  private abstract class RanamingComponent
+      extends PluginComponent
+      with TypingTransformers {
+
+    val global: JudeRenamer.this.global.type = JudeRenamer.this.global
+    val mappings: Map[String, String]
+    def newPhase(_prev: Phase) = new JudeRenamerPhase(_prev)
 
     class JudeRenamerTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
