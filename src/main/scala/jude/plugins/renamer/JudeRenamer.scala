@@ -33,7 +33,14 @@ class JudeRenamer(val global: Global) extends Plugin {
       method("$eq$eq"),
       method("$bang$eq"),
       method("equals"),
-      method("toString")
+      method("toString"),
+      method("clone"),
+      method("finalize"),
+      method("getClass"),
+      method("hashCode"),
+      method("notify"),
+      method("notifyAll"),
+      method("wait")
     ).flatten.toMap
 
     class JudeRenamerTransformer(unit: CompilationUnit)
