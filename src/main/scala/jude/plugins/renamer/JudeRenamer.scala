@@ -28,6 +28,18 @@ class JudeRenamer(val global: Global) extends Plugin {
   def method(s: String): List[(String, String)] =
     List(quote(s), extern(s))
 
+  val PAT_MAT_EQ = TermName("restricted$u0020patternMatchingEquals")
+  lazy val PAT_MAT_GET = TermName("restricted$u0020namedExtractorValueGetter")
+  lazy val PAT_MAT_IS_EMPTY = TermName(
+    "restricted$u0020namedExtractorCheckIfEmpty"
+  )
+
+  val restricted: List[TermName] = List(
+    PAT_MAT_EQ,
+    PAT_MAT_GET,
+    PAT_MAT_IS_EMPTY
+  )
+
   private object AfterParserComponent
       extends PluginComponent
       with TypingTransformers {
@@ -46,7 +58,12 @@ class JudeRenamer(val global: Global) extends Plugin {
       method("notify"),
       method("notifyAll"),
       method("equals"),
-      method("wait")
+      method("wait"),
+      List(
+        "get" -> "'get'",
+        PAT_MAT_GET.toString -> "get",
+        "isEmpty" -> "'isEmpty'"
+      )
     ).flatten.toMap
 
     def enabled[T <: NameTreeApi]: PartialFunction[T, Boolean] = {
@@ -61,15 +78,42 @@ class JudeRenamer(val global: Global) extends Plugin {
     val global: JudeRenamer.this.global.type = JudeRenamer.this.global
     def newPhase(_prev: Phase) = new JudeRenamerPhase(_prev)
 
+    val boolRepr: Tree => Boolean = {
+      case Ident(TypeName("Boolean"))                           => true
+      case Select(Ident(TermName("jude")), TypeName("Boolean")) => true
+      case Select(
+          Select(Ident(termNames.ROOTPKG), TermName("jude")),
+          TypeName("Boolean")
+          ) =>
+        true
+      case _ => false
+    }
     class JudeRenamerTransformer(unit: CompilationUnit)
         extends TypingTransformer(unit) {
       override def transform(tree: Tree) = {
+        val typecheck: Tree => Tree = localTyper.typedPos(tree.pos) _
         tree match {
           case s @ Select(lhs, TermName(id)) if doit(s) =>
             Select(transform(lhs), TermName(mappings(id)))
 
           case i @ Ident(TermName(id)) if doit(i) =>
             Ident(TermName(mappings(id)))
+          case dd @ DefDef(
+                modifiers,
+                PAT_MAT_IS_EMPTY,
+                tparams,
+                params,
+                t,
+                rhs
+              ) if boolRepr(t) =>
+            DefDef(
+              modifiers,
+              TermName("isEmpty"),
+              tparams,
+              params,
+              tq"_root_.scala.Boolean",
+              q"(${transform(rhs)}).toScalaEntity".setPos(rhs.pos)
+            ).setPos(dd.pos)
           case dd @ DefDef(
                 modifiers,
                 TermName(id),
@@ -110,17 +154,18 @@ class JudeRenamer(val global: Global) extends Plugin {
 
       override def apply(unit: CompilationUnit): Unit = {
         unit.body
-          .filter {
-            case _: DefDef => false
-            case _         => true
-          }
           .foreach {
-            case tree @ (Select(_, PAT_MAT_EQ) | Ident(PAT_MAT_EQ)) =>
+            case tree @ Select(_, id) if restricted.contains(id) =>
               global.reporter.error(
                 tree.pos,
-                s"`${PAT_MAT_EQ.decodedName}` is a restricted method name that can only be invoked by the compiler"
+                s"`${id.decodedName}` is a restricted method name that can only be invoked by the compiler"
               )
-            case _ =>
+            case tree @ Ident(id) if restricted.contains(id) =>
+              global.reporter.error(
+                tree.pos,
+                s"`${id.decodedName}` is a restricted method name that can only be invoked by the compiler"
+              )
+            case tree =>
           }
         unit.body = new JudeRenamerTransformer(unit).transform(unit.body)
       }
@@ -152,8 +197,6 @@ class JudeRenamer(val global: Global) extends Plugin {
     }
     def newPhase(_prev: Phase) = new JudeRenamerPhase(_prev)
   }
-
-  val PAT_MAT_EQ = TermName("restricted$u0020patternMatchingEquals")
 
   private object AfterPatmatComponent
       extends PluginComponent
